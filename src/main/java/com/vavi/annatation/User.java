@@ -1,4 +1,4 @@
-package com.vavi.annatation; 
+package com.vavi.annatation;
 
 public class User {
 
@@ -7,4 +7,3 @@ public class User {
 		return "add";
 	}
 }
-

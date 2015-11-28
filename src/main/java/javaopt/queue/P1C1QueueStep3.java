@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * <ul>
  * <li>Lock free, observing single writer principal.

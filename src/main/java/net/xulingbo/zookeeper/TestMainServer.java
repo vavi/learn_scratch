@@ -13,61 +13,61 @@ import org.springframework.util.StringUtils;
  * Author By: junshan Created Date: 2010-9-3 16:17:21
  */
 public class TestMainServer extends ZooKeeperServerMain {
-    public static final int CLIENT_PORT = 3181;
+	public static final int CLIENT_PORT = 3181;
 
-    public static class MainThread extends Thread {
-	final File confFile;
-	final TestMainServer main;
+	public static class MainThread extends Thread {
+		final File confFile;
+		final TestMainServer main;
 
-	public MainThread(int clientPort) throws IOException {
-	    super("Standalone server with clientPort:" + clientPort);
-	    File tmpDir = new File("/tmp");
-	    confFile = new File(tmpDir, "zoo.cfg");
+		public MainThread(int clientPort) throws IOException {
+			super("Standalone server with clientPort:" + clientPort);
+			File tmpDir = new File("/tmp");
+			confFile = new File(tmpDir, "zoo.cfg");
 
-	    FileWriter fwriter = new FileWriter(confFile);
-	    fwriter.write("tickTime=2000\n");
-	    fwriter.write("initLimit=10\n");
-	    fwriter.write("syncLimit=5\n");
+			FileWriter fwriter = new FileWriter(confFile);
+			fwriter.write("tickTime=2000\n");
+			fwriter.write("initLimit=10\n");
+			fwriter.write("syncLimit=5\n");
 
-	    File dataDir = new File(tmpDir, "data1");
-	    if (!dataDir.mkdir()) {
-		// throw new IOException("unable to mkdir " + dataDir);
-	    }
-	    String df = StringUtils.replace(dataDir.toString(), "\\", "/");
-	    fwriter.write("dataDir=" + df + "\n");
+			File dataDir = new File(tmpDir, "data1");
+			if (!dataDir.mkdir()) {
+				// throw new IOException("unable to mkdir " + dataDir);
+			}
+			String df = StringUtils.replace(dataDir.toString(), "\\", "/");
+			fwriter.write("dataDir=" + df + "\n");
 
-	    fwriter.write("clientPort=" + clientPort + "\n");
-	    fwriter.flush();
-	    fwriter.close();
+			fwriter.write("clientPort=" + clientPort + "\n");
+			fwriter.flush();
+			fwriter.close();
 
-	    main = new TestMainServer();
+			main = new TestMainServer();
+		}
+
+		@Override
+		public void run() {
+			String args[] = new String[1];
+			args[0] = confFile.toString();
+			try {
+				main.initializeAndRun(args);
+			} catch (Exception e) {
+
+			}
+		}
 	}
 
-	@Override
-	public void run() {
-	    String args[] = new String[1];
-	    args[0] = confFile.toString();
-	    try {
-		main.initializeAndRun(args);
-	    } catch (Exception e) {
+	public static void start() {
 
-	    }
+		MainThread main = null;
+		try {
+			main = new MainThread(CLIENT_PORT);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return;
+		}
+		main.start();
 	}
-    }
 
-    public static void start() {
-
-	MainThread main = null;
-	try {
-	    main = new MainThread(CLIENT_PORT);
-	} catch (IOException e) {
-	    e.printStackTrace();
-	    return;
+	public static void main(String[] args) {
+		TestMainServer.start();
 	}
-	main.start();
-    }
-
-    public static void main(String[] args) {
-	TestMainServer.start();
-    }
 }

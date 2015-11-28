@@ -5,15 +5,15 @@ package com.javaspeak.concurrency.cas.atomicintegerfieldupdater;
  */
 public class Details {
 
-    volatile int numberTimesInvoked;
+	volatile int numberTimesInvoked;
 
-    public int getNumberTimesInvoked() {
+	public int getNumberTimesInvoked() {
 
-	return numberTimesInvoked;
-    }
+		return numberTimesInvoked;
+	}
 
-    public void setNumberTimesInvoked(int numberTimesInvoked) {
+	public void setNumberTimesInvoked(int numberTimesInvoked) {
 
-	this.numberTimesInvoked = numberTimesInvoked;
-    }
+		this.numberTimesInvoked = numberTimesInvoked;
+	}
 }

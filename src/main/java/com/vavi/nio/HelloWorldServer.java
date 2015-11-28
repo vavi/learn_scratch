@@ -20,94 +20,94 @@ import java.util.Iterator;
  */
 public class HelloWorldServer {
 
-    static int BLOCK = 1024;
-    static String name = "";
-    protected Selector selector;
-    protected ByteBuffer clientBuffer = ByteBuffer.allocate(BLOCK);
-    protected CharsetDecoder decoder;
-    static CharsetEncoder encoder = Charset.forName("GB2312").newEncoder();
+	static int BLOCK = 1024;
+	static String name = "";
+	protected Selector selector;
+	protected ByteBuffer clientBuffer = ByteBuffer.allocate(BLOCK);
+	protected CharsetDecoder decoder;
+	static CharsetEncoder encoder = Charset.forName("GB2312").newEncoder();
 
-    public HelloWorldServer(int port) throws IOException {
-	selector = this.getSelector(port);
-	Charset charset = Charset.forName("GB2312");
-	decoder = charset.newDecoder();
-    }
+	public HelloWorldServer(int port) throws IOException {
+		selector = this.getSelector(port);
+		Charset charset = Charset.forName("GB2312");
+		decoder = charset.newDecoder();
+	}
 
-    // 获取Selector
-    protected Selector getSelector(int port) throws IOException {
-	ServerSocketChannel server = ServerSocketChannel.open();
-	Selector sel = Selector.open();
-	server.socket().bind(new InetSocketAddress(port));
-	server.configureBlocking(false);
-	server.register(sel, SelectionKey.OP_ACCEPT);
-	return sel;
-    }
+	// 获取Selector
+	protected Selector getSelector(int port) throws IOException {
+		ServerSocketChannel server = ServerSocketChannel.open();
+		Selector sel = Selector.open();
+		server.socket().bind(new InetSocketAddress(port));
+		server.configureBlocking(false);
+		server.register(sel, SelectionKey.OP_ACCEPT);
+		return sel;
+	}
 
-    // 监听端口
-    public void listen() {
-	try {
-	    for (;;) {
-		selector.select();
-		Iterator iter = selector.selectedKeys().iterator();
-		while (iter.hasNext()) {
-		    SelectionKey key = (SelectionKey) iter.next();
-		    iter.remove();
-		    process(key);
+	// 监听端口
+	public void listen() {
+		try {
+			for (;;) {
+				selector.select();
+				Iterator iter = selector.selectedKeys().iterator();
+				while (iter.hasNext()) {
+					SelectionKey key = (SelectionKey) iter.next();
+					iter.remove();
+					process(key);
+				}
+			}
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-	    }
-	} catch (IOException e) {
-	    e.printStackTrace();
 	}
-    }
 
-    // 处理事件
-    protected void process(SelectionKey key) throws IOException {
-	if (key.isAcceptable()) { // 接收请求
-	    ServerSocketChannel server = (ServerSocketChannel) key.channel();
-	    SocketChannel channel = server.accept();
-	    // 设置非阻塞模式
-	    channel.configureBlocking(false);
-	    channel.register(selector, SelectionKey.OP_READ);
-	} else if (key.isReadable()) { // 读信息
-	    SocketChannel channel = (SocketChannel) key.channel();
-	    int count = channel.read(clientBuffer);
-	    if (count > 0) {
-		clientBuffer.flip();
-		CharBuffer charBuffer = decoder.decode(clientBuffer);
-		name = charBuffer.toString();
-		// System.out.println(name);
-		SelectionKey sKey = channel.register(selector,
-			SelectionKey.OP_WRITE);
-		sKey.attach(name);
-	    } else {
-		channel.close();
-	    }
+	// 处理事件
+	protected void process(SelectionKey key) throws IOException {
+		if (key.isAcceptable()) { // 接收请求
+			ServerSocketChannel server = (ServerSocketChannel) key.channel();
+			SocketChannel channel = server.accept();
+			// 设置非阻塞模式
+			channel.configureBlocking(false);
+			channel.register(selector, SelectionKey.OP_READ);
+		} else if (key.isReadable()) { // 读信息
+			SocketChannel channel = (SocketChannel) key.channel();
+			int count = channel.read(clientBuffer);
+			if (count > 0) {
+				clientBuffer.flip();
+				CharBuffer charBuffer = decoder.decode(clientBuffer);
+				name = charBuffer.toString();
+				// System.out.println(name);
+				SelectionKey sKey = channel.register(selector,
+						SelectionKey.OP_WRITE);
+				sKey.attach(name);
+			} else {
+				channel.close();
+			}
 
-	    clientBuffer.clear();
-	} else if (key.isWritable()) { // 写事件
-	    SocketChannel channel = (SocketChannel) key.channel();
-	    String name = (String) key.attachment();
+			clientBuffer.clear();
+		} else if (key.isWritable()) { // 写事件
+			SocketChannel channel = (SocketChannel) key.channel();
+			String name = (String) key.attachment();
 
-	    ByteBuffer block = encoder
-		    .encode(CharBuffer.wrap("Hello !" + name));
+			ByteBuffer block = encoder
+					.encode(CharBuffer.wrap("Hello !" + name));
 
-	    channel.write(block);
+			channel.write(block);
 
-	    // channel.close();
+			// channel.close();
 
+		}
 	}
-    }
 
-    public static void main(String[] args) {
-	int port = 8888;
-	try {
-	    HelloWorldServer server = new HelloWorldServer(port);
-	    System.out.println("listening on " + port);
+	public static void main(String[] args) {
+		int port = 8888;
+		try {
+			HelloWorldServer server = new HelloWorldServer(port);
+			System.out.println("listening on " + port);
 
-	    server.listen();
+			server.listen();
 
-	} catch (IOException e) {
-	    e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-    }
 }
