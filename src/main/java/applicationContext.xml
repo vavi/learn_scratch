@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN 2.0//EN" "http://www.springframework.org/dtd/spring-beans-2.0.dtd">
+
+<beans>
+	<bean id="human" class="com.vavi.proxy.Person">
+	</bean>
+	<bean id="sleepHelper" class="com.vavi.spring.aop.jdk.SleepAdvice">
+	</bean>
+	<bean id="sleepPointcut" class="org.springframework.aop.support.JdkRegexpMethodPointcut">
+		<property name="pattern" value=".*sleep" />
+	</bean>
+	<bean id="sleepHelperAdvisor" class="org.springframework.aop.support.DefaultPointcutAdvisor">
+		<property name="advice" ref="sleepHelper" />
+		<property name="pointcut" ref="sleepPointcut" />
+	</bean>
+	<bean id="humanProxy" class="org.springframework.aop.framework.ProxyFactoryBean">
+		<property name="target" ref="human" />
+		<property name="interceptorNames" value="sleepHelperAdvisor" />
+		<property name="proxyInterfaces" value="com.vavi.proxy.Sleepable" />
+	</bean>
+
+</beans>
