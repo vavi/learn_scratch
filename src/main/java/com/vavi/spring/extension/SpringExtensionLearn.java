@@ -18,27 +18,27 @@ public class SpringExtensionLearn implements BeanClassLoaderAware,
 		BeanDefinitionRegistryPostProcessor, BeanNameAware, BeanPostProcessor,
 		BeanFactoryAware, BeanFactoryPostProcessor, InitializingBean,
 		ApplicationContextAware {
-	
+
 	@Override
 	public void setBeanName(String name) {
 		System.out.println("1.Specified by: setBeanName(...) in BeanNameAware");
 
 	}
-	
+
 	@Override
 	public void setBeanClassLoader(ClassLoader classLoader) {
 		System.out
 				.println("2.Specified by: setBeanClassLoader(...) in BeanClassLoaderAware");
 
 	}
-	
+
 	@Override
 	public void setBeanFactory(BeanFactory beanFactory) throws BeansException {
 		System.out
 				.println("3.Specified by: setBeanFactory(...) in BeanFactoryAware");
 
 	}
-	
+
 	@Override
 	public void setApplicationContext(ApplicationContext applicationContext)
 			throws BeansException {
@@ -47,13 +47,12 @@ public class SpringExtensionLearn implements BeanClassLoaderAware,
 
 	}
 
-
 	@Override
 	public void afterPropertiesSet() throws Exception {
 		System.out
 				.println("5.Specified by: afterPropertiesSet() in InitializingBean");
 	}
-	
+
 	@Override
 	public void postProcessBeanDefinitionRegistry(
 			BeanDefinitionRegistry registry) throws BeansException {
@@ -62,8 +61,6 @@ public class SpringExtensionLearn implements BeanClassLoaderAware,
 
 	}
 
-
-
 	@Override
 	public void postProcessBeanFactory(
 			ConfigurableListableBeanFactory beanFactory) throws BeansException {
@@ -71,7 +68,6 @@ public class SpringExtensionLearn implements BeanClassLoaderAware,
 				.println("7.Specified by: postProcessBeanFactory(...) in BeanFactoryPostProcessor");
 
 	}
-
 
 	@Override
 	public Object postProcessBeforeInitialization(Object bean, String beanName)
@@ -90,12 +86,5 @@ public class SpringExtensionLearn implements BeanClassLoaderAware,
 
 		return null;
 	}
-
-
-
-
-
-
-
 
 }

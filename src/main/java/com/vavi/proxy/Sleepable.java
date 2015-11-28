@@ -1,7 +1,7 @@
 package com.vavi.proxy;
 
 public interface Sleepable {
-    void sleep();
+	void sleep();
 
-    void eat();
+	void eat();
 }

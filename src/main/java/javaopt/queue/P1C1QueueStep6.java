@@ -27,249 +27,249 @@ import java.util.concurrent.locks.LockSupport;
 
 @SuppressWarnings("restriction")
 public final class P1C1QueueStep6 implements Queue<Integer> {
-    public final static byte PRODUCER = 1;
-    public final static byte CONSUMER = 2;
-    // 24b,8b,32b | 24b,8b,32b | 24b,8b,32b | 24b,8b,32b
-    private final ByteBuffer buffy;
-    private final long headAddress;
-    private final long tailCacheAddress;
-    private final long tailAddress;
-    private final long headCacheAddress;
+	public final static byte PRODUCER = 1;
+	public final static byte CONSUMER = 2;
+	// 24b,8b,32b | 24b,8b,32b | 24b,8b,32b | 24b,8b,32b
+	private final ByteBuffer buffy;
+	private final long headAddress;
+	private final long tailCacheAddress;
+	private final long tailAddress;
+	private final long headCacheAddress;
 
-    private final int capacity;
-    private final int mask;
-    private final long arrayBase;
-    private static final int INT_ELEMENT_SCALE = 2;
+	private final int capacity;
+	private final int mask;
+	private final long arrayBase;
+	private static final int INT_ELEMENT_SCALE = 2;
 
-    public P1C1QueueStep6(final int capacity) {
-	this(allocateAlignedByteBuffer(4 * CACHE_LINE_SIZE
-		+ findNextPositivePowerOfTwo(capacity) << INT_ELEMENT_SCALE,
-		CACHE_LINE_SIZE), findNextPositivePowerOfTwo(capacity),
-		(byte) (PRODUCER | CONSUMER));
-    }
-
-    /**
-     * This is to be used for an IPC queue with the direct buffer used being a
-     * memory mapped file.
-     * 
-     * @param buff
-     * @param capacity
-     * @param viewMask
-     */
-    public P1C1QueueStep6(final ByteBuffer buff, final int capacity,
-	    byte viewMask) {
-	this.capacity = findNextPositivePowerOfTwo(capacity);
-	buffy = alignedSlice(
-		4 * CACHE_LINE_SIZE + this.capacity << INT_ELEMENT_SCALE,
-		CACHE_LINE_SIZE, buff);
-
-	long alignedAddress = UnsafeDirectByteBuffer.getAddress(buffy);
-
-	headAddress = alignedAddress + (CACHE_LINE_SIZE / 2 - 8);
-	tailCacheAddress = headAddress + CACHE_LINE_SIZE;
-	tailAddress = tailCacheAddress + CACHE_LINE_SIZE;
-	headCacheAddress = tailAddress + CACHE_LINE_SIZE;
-	arrayBase = alignedAddress + 4 * CACHE_LINE_SIZE;
-	// producer owns tail and headCache
-	if ((viewMask & PRODUCER) == PRODUCER) {
-	    setHeadCache(0);
-	    setTail(0);
-	}
-	// consumer owns head and tailCache
-	if ((viewMask & CONSUMER) == CONSUMER) {
-	    setTailCache(0);
-	    setHead(0);
-	}
-	mask = this.capacity - 1;
-    }
-
-    public static int findNextPositivePowerOfTwo(final int value) {
-	return 1 << (32 - Integer.numberOfLeadingZeros(value - 1));
-    }
-
-    @Override
-    public boolean add(final Integer e) {
-	if (offer(e)) {
-	    return true;
+	public P1C1QueueStep6(final int capacity) {
+		this(allocateAlignedByteBuffer(4 * CACHE_LINE_SIZE
+				+ findNextPositivePowerOfTwo(capacity) << INT_ELEMENT_SCALE,
+				CACHE_LINE_SIZE), findNextPositivePowerOfTwo(capacity),
+				(byte) (PRODUCER | CONSUMER));
 	}
 
-	throw new IllegalStateException("Queue is full");
-    }
+	/**
+	 * This is to be used for an IPC queue with the direct buffer used being a
+	 * memory mapped file.
+	 * 
+	 * @param buff
+	 * @param capacity
+	 * @param viewMask
+	 */
+	public P1C1QueueStep6(final ByteBuffer buff, final int capacity,
+			byte viewMask) {
+		this.capacity = findNextPositivePowerOfTwo(capacity);
+		buffy = alignedSlice(
+				4 * CACHE_LINE_SIZE + this.capacity << INT_ELEMENT_SCALE,
+				CACHE_LINE_SIZE, buff);
 
-    @Override
-    public boolean offer(final Integer e) {
-	if (null == e) {
-	    throw new NullPointerException("Null is not a valid element");
-	}
+		long alignedAddress = UnsafeDirectByteBuffer.getAddress(buffy);
 
-	while (true) {
-	    final long currentTail = getTail();
-	    final long wrapPoint = currentTail - capacity;
-	    if (getHeadCache() <= wrapPoint) {
-		setHeadCache(getHead());
-		if (getHeadCache() <= wrapPoint) {
-		    LockSupport.parkNanos(1L);
-		    continue;
+		headAddress = alignedAddress + (CACHE_LINE_SIZE / 2 - 8);
+		tailCacheAddress = headAddress + CACHE_LINE_SIZE;
+		tailAddress = tailCacheAddress + CACHE_LINE_SIZE;
+		headCacheAddress = tailAddress + CACHE_LINE_SIZE;
+		arrayBase = alignedAddress + 4 * CACHE_LINE_SIZE;
+		// producer owns tail and headCache
+		if ((viewMask & PRODUCER) == PRODUCER) {
+			setHeadCache(0);
+			setTail(0);
 		}
-	    }
-
-	    long offset = arrayBase
-		    + ((currentTail & mask) << INT_ELEMENT_SCALE);
-	    UnsafeAccess.unsafe.putInt(offset, e.intValue());
-
-	    setTail(currentTail + 1);
-
-	    return true;
-	}
-    }
-
-    @Override
-    public Integer poll() {
-	while (true) {
-	    final long currentHead = getHead();
-	    if (currentHead >= getTailCache()) {
-		setTailCache(getTail());
-		if (currentHead >= getTailCache()) {
-		    LockSupport.parkNanos(1L);
-		    continue;
+		// consumer owns head and tailCache
+		if ((viewMask & CONSUMER) == CONSUMER) {
+			setTailCache(0);
+			setHead(0);
 		}
-	    }
-
-	    final long offset = arrayBase
-		    + ((currentHead & mask) << INT_ELEMENT_SCALE);
-	    final int e = UnsafeAccess.unsafe.getInt(offset);
-	    setHead(currentHead + 1);
-	    return e;
-	}
-    }
-
-    @Override
-    public Integer remove() {
-	final Integer e = poll();
-	if (null == e) {
-	    throw new NoSuchElementException("Queue is empty");
+		mask = this.capacity - 1;
 	}
 
-	return e;
-    }
-
-    @Override
-    public Integer element() {
-	final Integer e = peek();
-	if (null == e) {
-	    throw new NoSuchElementException("Queue is empty");
+	public static int findNextPositivePowerOfTwo(final int value) {
+		return 1 << (32 - Integer.numberOfLeadingZeros(value - 1));
 	}
 
-	return e;
-    }
+	@Override
+	public boolean add(final Integer e) {
+		if (offer(e)) {
+			return true;
+		}
 
-    @Override
-    public Integer peek() {
-	return null;
-    }
+		throw new IllegalStateException("Queue is full");
+	}
 
-    @Override
-    public int size() {
-	return (int) (getTail() - getHead());
-    }
+	@Override
+	public boolean offer(final Integer e) {
+		if (null == e) {
+			throw new NullPointerException("Null is not a valid element");
+		}
 
-    @Override
-    public boolean isEmpty() {
-	return getTail() == getHead();
-    }
+		while (true) {
+			final long currentTail = getTail();
+			final long wrapPoint = currentTail - capacity;
+			if (getHeadCache() <= wrapPoint) {
+				setHeadCache(getHead());
+				if (getHeadCache() <= wrapPoint) {
+					LockSupport.parkNanos(1L);
+					continue;
+				}
+			}
 
-    @Override
-    public boolean contains(final Object o) {
-	return false;
-    }
+			long offset = arrayBase
+					+ ((currentTail & mask) << INT_ELEMENT_SCALE);
+			UnsafeAccess.unsafe.putInt(offset, e.intValue());
 
-    @Override
-    public Iterator<Integer> iterator() {
-	throw new UnsupportedOperationException();
-    }
+			setTail(currentTail + 1);
 
-    @Override
-    public Object[] toArray() {
-	throw new UnsupportedOperationException();
-    }
+			return true;
+		}
+	}
 
-    @Override
-    public <T> T[] toArray(final T[] a) {
-	throw new UnsupportedOperationException();
-    }
+	@Override
+	public Integer poll() {
+		while (true) {
+			final long currentHead = getHead();
+			if (currentHead >= getTailCache()) {
+				setTailCache(getTail());
+				if (currentHead >= getTailCache()) {
+					LockSupport.parkNanos(1L);
+					continue;
+				}
+			}
 
-    @Override
-    public boolean remove(final Object o) {
-	throw new UnsupportedOperationException();
-    }
+			final long offset = arrayBase
+					+ ((currentHead & mask) << INT_ELEMENT_SCALE);
+			final int e = UnsafeAccess.unsafe.getInt(offset);
+			setHead(currentHead + 1);
+			return e;
+		}
+	}
 
-    @Override
-    public boolean containsAll(final Collection<?> c) {
-	for (final Object o : c) {
-	    if (!contains(o)) {
+	@Override
+	public Integer remove() {
+		final Integer e = poll();
+		if (null == e) {
+			throw new NoSuchElementException("Queue is empty");
+		}
+
+		return e;
+	}
+
+	@Override
+	public Integer element() {
+		final Integer e = peek();
+		if (null == e) {
+			throw new NoSuchElementException("Queue is empty");
+		}
+
+		return e;
+	}
+
+	@Override
+	public Integer peek() {
+		return null;
+	}
+
+	@Override
+	public int size() {
+		return (int) (getTail() - getHead());
+	}
+
+	@Override
+	public boolean isEmpty() {
+		return getTail() == getHead();
+	}
+
+	@Override
+	public boolean contains(final Object o) {
 		return false;
-	    }
 	}
 
-	return true;
-    }
-
-    @Override
-    public boolean addAll(final Collection<? extends Integer> c) {
-	for (final Integer e : c) {
-	    add(e);
+	@Override
+	public Iterator<Integer> iterator() {
+		throw new UnsupportedOperationException();
 	}
 
-	return true;
-    }
+	@Override
+	public Object[] toArray() {
+		throw new UnsupportedOperationException();
+	}
 
-    @Override
-    public boolean removeAll(final Collection<?> c) {
-	throw new UnsupportedOperationException();
-    }
+	@Override
+	public <T> T[] toArray(final T[] a) {
+		throw new UnsupportedOperationException();
+	}
 
-    @Override
-    public boolean retainAll(final Collection<?> c) {
-	throw new UnsupportedOperationException();
-    }
+	@Override
+	public boolean remove(final Object o) {
+		throw new UnsupportedOperationException();
+	}
 
-    @Override
-    public void clear() {
-	Object value;
-	do {
-	    value = poll();
-	} while (null != value);
-    }
+	@Override
+	public boolean containsAll(final Collection<?> c) {
+		for (final Object o : c) {
+			if (!contains(o)) {
+				return false;
+			}
+		}
 
-    private long getHead() {
-	return UnsafeAccess.unsafe.getLongVolatile(null, headAddress);
-    }
+		return true;
+	}
 
-    private void setHead(final long value) {
-	UnsafeAccess.unsafe.putOrderedLong(null, headAddress, value);
-    }
+	@Override
+	public boolean addAll(final Collection<? extends Integer> c) {
+		for (final Integer e : c) {
+			add(e);
+		}
 
-    private long getTail() {
-	return UnsafeAccess.unsafe.getLongVolatile(null, tailAddress);
-    }
+		return true;
+	}
 
-    private void setTail(final long value) {
-	UnsafeAccess.unsafe.putOrderedLong(null, tailAddress, value);
-    }
+	@Override
+	public boolean removeAll(final Collection<?> c) {
+		throw new UnsupportedOperationException();
+	}
 
-    private long getHeadCache() {
-	return UnsafeAccess.unsafe.getLong(null, headCacheAddress);
-    }
+	@Override
+	public boolean retainAll(final Collection<?> c) {
+		throw new UnsupportedOperationException();
+	}
 
-    private void setHeadCache(final long value) {
-	UnsafeAccess.unsafe.putLong(headCacheAddress, value);
-    }
+	@Override
+	public void clear() {
+		Object value;
+		do {
+			value = poll();
+		} while (null != value);
+	}
 
-    private long getTailCache() {
-	return UnsafeAccess.unsafe.getLong(null, tailCacheAddress);
-    }
+	private long getHead() {
+		return UnsafeAccess.unsafe.getLongVolatile(null, headAddress);
+	}
 
-    private void setTailCache(final long value) {
-	UnsafeAccess.unsafe.putLong(tailCacheAddress, value);
-    }
+	private void setHead(final long value) {
+		UnsafeAccess.unsafe.putOrderedLong(null, headAddress, value);
+	}
+
+	private long getTail() {
+		return UnsafeAccess.unsafe.getLongVolatile(null, tailAddress);
+	}
+
+	private void setTail(final long value) {
+		UnsafeAccess.unsafe.putOrderedLong(null, tailAddress, value);
+	}
+
+	private long getHeadCache() {
+		return UnsafeAccess.unsafe.getLong(null, headCacheAddress);
+	}
+
+	private void setHeadCache(final long value) {
+		UnsafeAccess.unsafe.putLong(headCacheAddress, value);
+	}
+
+	private long getTailCache() {
+		return UnsafeAccess.unsafe.getLong(null, tailCacheAddress);
+	}
+
+	private void setTailCache(final long value) {
+		UnsafeAccess.unsafe.putLong(tailCacheAddress, value);
+	}
 }

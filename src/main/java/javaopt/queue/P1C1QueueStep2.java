@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 import java.util.concurrent.atomic.AtomicLong;
+
 /**
  * <ul>
  * <li>Lock free, observing single writer principal.
@@ -33,9 +34,8 @@ public final class P1C1QueueStep2<E> implements Queue<E> {
 
 	@SuppressWarnings("unchecked")
 	public P1C1QueueStep2(int capacity) {
-    buffer = (E[]) new Object[capacity];
+		buffer = (E[]) new Object[capacity];
 	}
-
 
 	public boolean add(final E e) {
 		if (offer(e)) {
@@ -56,7 +56,7 @@ public final class P1C1QueueStep2<E> implements Queue<E> {
 			return false;
 		}
 
-    buffer[(int) (currentTail % buffer.length)] = e;
+		buffer[(int) (currentTail % buffer.length)] = e;
 		tail.lazySet(currentTail + 1);
 
 		return true;
@@ -68,7 +68,7 @@ public final class P1C1QueueStep2<E> implements Queue<E> {
 			return null;
 		}
 
-    final int index = (int) (currentHead % buffer.length);
+		final int index = (int) (currentHead % buffer.length);
 		final E e = buffer[index];
 		buffer[index] = null;
 		head.lazySet(currentHead + 1);
@@ -95,7 +95,7 @@ public final class P1C1QueueStep2<E> implements Queue<E> {
 	}
 
 	public E peek() {
-    return buffer[(int) (head.get() % buffer.length)];
+		return buffer[(int) (head.get() % buffer.length)];
 	}
 
 	public int size() {
@@ -112,7 +112,7 @@ public final class P1C1QueueStep2<E> implements Queue<E> {
 		}
 
 		for (long i = head.get(), limit = tail.get(); i < limit; i++) {
-      final E e = buffer[(int) (i % buffer.length)];
+			final E e = buffer[(int) (i % buffer.length)];
 			if (o.equals(e)) {
 				return true;
 			}
